@@ -14,10 +14,10 @@ This is a project for analyzing historical NBA data, specifically moneylines wit
 - Jupyter notebook walking through the whole thing
 
 ### Usage
-clone the repo
-cd into the repo root
+clone the repo, 
+cd into the repo root, run 
 ``` python ./src/main.py -h ```
-will give you a run down of all the options. The main ones are
+which will give you a rundown of all the options. The main ones are
 ``` --run_backtest ```
 and
 ``` --get_predictions ```
