@@ -7,6 +7,8 @@ import pandas as pd
 import os
 import json
 from datetime import datetime
+import shutil
+import requests
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new") 
@@ -29,7 +31,7 @@ class Dataset():
         self.today_refs_data = None    
         self.historical_data_dir = './historical_data/'
         self.yesterday_data_dir = './live_data/'
-        self.TODAY_FILE = os.listdir('./live_data/')[0]
+        self.TODAY_FILE = self.__download_current_data__('11-22-2023')
         self.column_mappings = None
         self.column_mappings_file = './config/column_mappings.json'
         self.filename = './live_data/dataframe.pkl'
@@ -98,8 +100,37 @@ class Dataset():
             self.today_data = None
         
         self.historical_data = self.get_historical_data()
+
+    def __download_current_data__(self, date=None):
+        # Define the base URL and parameters
+        base_url = "https://www.bigdataball.com/wp-admin/admin-ajax.php?action=outofthebox-download"
+        account_id = "dbid:AADL0JM6TbjOPoH-7_QmtAYk4iT4-vis0Tk"
+        listtoken = "421f46cd8fe7a43b705e438648517e48"
         
-        
+        # Get current date in the required format
+        current_date = datetime.now().strftime("%m-%d-%Y") if date == None else date
+        filename = f"{current_date}-nba-season-team-feed.xlsx"
+        outofthebox_path = f"%2F{filename}"
+
+        # Construct the full URL
+        full_url = f"{base_url}&OutoftheBoxpath={outofthebox_path}&lastpath=%2F&account_id={account_id}&listtoken={listtoken}&dl=1"
+
+        # Directory to save the file
+        save_dir = '.\live_data'
+        save_path = os.path.join(save_dir, filename)
+
+        # Clear out the save directory
+        if os.path.exists(save_dir):
+            shutil.rmtree(save_dir)
+        os.makedirs(save_dir)
+
+        # Use curl to download the file
+        response = requests.get(full_url, stream=True)
+        if response.status_code == 200:
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
+        return filename
+
                             
 
     def __scrape_odds_data__(self):
@@ -262,6 +293,21 @@ class Dataset():
         self.df['Season'] = self.df['BIGDATABALL_DATASET'].map(self.SEASON_MAP)
     
         return self.df
+
+    def get_ydf(self):
+        self.ydf = pd.read_excel(f'{self.yesterday_data_dir}{self.TODAY_FILE}')
+        return self.ydf
+
+    def get_refs_data(self):
+        # refs data
+        refs_2019 = pd.read_csv(f'{self.historical_data_dir}2018-2019.csv')
+        refs_2020 = pd.read_csv(f'{self.historical_data_dir}2019-2020.csv')
+        refs_2021 = pd.read_csv(f'{self.historical_data_dir}2020-2021.csv')
+        refs_2022 = pd.read_csv(f'{self.historical_data_dir}2021_2022.csv')
+        refs_2023 = pd.read_csv(f'{self.historical_data_dir}2022-2023.csv')
+        self.refs_df = pd.concat([refs_2019, refs_2020, refs_2021, refs_2022, refs_2023])
+        return self.refs_df
+
 
     # Features that require looking at the opponent
     def __set_group_features__(self, group):

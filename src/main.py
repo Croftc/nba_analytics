@@ -3,6 +3,7 @@ from MoneylineModel import MoneylineModel
 from Dataset import Dataset
 from BacktestEngine import BacktestEngine
 import matplotlib.pyplot as plt
+import utils
 
 if __name__ == "__main__":
     # Set up argparse
@@ -47,7 +48,6 @@ if __name__ == "__main__":
     
     if args.get_predictions:
         print('get today predictions...')
-
-    print('Done')
+        utils.predict_today(data)
 
     
