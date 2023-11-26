@@ -31,7 +31,9 @@ class Dataset():
         self.today_refs_data = None    
         self.historical_data_dir = './historical_data/'
         self.yesterday_data_dir = './live_data/'
-        self.TODAY_FILE = self.__download_current_data__('11-22-2023')
+        self.today_data_dir = './live_data/'
+        self.TODAY_FILE = self.__download_current_data__('11-25-2023')
+        self.today_data_file = f'./{self.today_data_dir}{self.TODAY_FILE}.json'
         self.column_mappings = None
         self.column_mappings_file = './config/column_mappings.json'
         self.filename = './live_data/dataframe.pkl'
@@ -118,6 +120,10 @@ class Dataset():
         # Directory to save the file
         save_dir = '.\live_data'
         save_path = os.path.join(save_dir, filename)
+
+        # don't redownload if we already have it
+        if os.path.exists(save_path):
+            return filename
 
         # Clear out the save directory
         if os.path.exists(save_dir):
@@ -476,20 +482,36 @@ class Dataset():
             return file_creation_date == datetime.now().date()
         return False
 
-    def get_today_data(self):
-        self.today_odds_data = self.__scrape_odds_data__()
-        self.today_refs_data = self.__scrape_refs_data__()
-        self.today_data = deepcopy(self.today_odds_data)
+    def get_today_data(self, force_scrape=False):
 
-        for city, refs in self.today_refs_data.items():
-            try:
-                if city == 'L.A. Lakers':
-                    city = 'LA Lakers'
-                self.today_data[city][0] = ' '.join(refs[0].split(' ')[:-1])
-            except:
-                pass
+        # don't scrape if we don't have to 
+        if os.path.exists(self.today_data_file) and not force_scrape:
+            with open(self.today_data_file,'r') as json_file:
+                self.today_data = json.load(json_file)
+                return self.today_data
 
-        return self.today_data
+        elif not force_scrape:
+            print("Please enable webscraping")
+            exit()
+
+        else:
+            print(f"scraping data")
+            self.today_odds_data = self.__scrape_odds_data__()
+            self.today_refs_data = self.__scrape_refs_data__()
+            self.today_data = deepcopy(self.today_odds_data)
+
+            for city, refs in self.today_refs_data.items():
+                try:
+                    if city == 'L.A. Lakers':
+                        city = 'LA Lakers'
+                    self.today_data[city][0] = ' '.join(refs[0].split(' ')[:-1])
+                except:
+                    pass
+
+            with open(self.today_data_file,'w') as fp:
+                fp.write(json.dumps(self.today_data))
+
+            return self.today_data
 
     def get_historical_data(self):
         if self.data_is_processed:

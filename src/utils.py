@@ -1,8 +1,160 @@
 import pandas as pd
-from IPython.display import HTML
+from IPython.display import HTML, display
+import numpy as np
+import pandas as pd
+import warnings
+warnings.filterwarnings('ignore')
 
-def prdict_today(data):
+def american_odds_to_probability(odds):
+    if odds > 0:
+        probability = 100 / (odds + 100)
+    else:
+        probability = -odds / (-odds + 100)
+    return probability
+
+def calculate_profit(odds, size):
+    if odds > 0:
+        profit = (odds / 100) * size
+    else:
+        profit = (100 / -(odds + 0.0000001)) * size
+    return profit
+
+def kelly_criterion(bankroll, probability, odds, temper=1):
+    """
+    Calculate the optimal bet size using the Kelly Criterion.
+
+    :param bankroll: Total amount of money you have to bet with.
+    :param probability: The probability of the bet winning (from 0 to 1).
+    :param odds: The odds being offered on the bet (in decimal format).
+    :return: The recommended bet size according to the Kelly Criterion.
+    """
+    # Convert American odds to decimal if necessary
+    if odds > 0:
+        odds = (odds / 100) + 1
+    elif odds < 0:
+        odds = (100 / -odds) + 1
+
+    # Calculate the Kelly bet fraction
+    b = odds - 1  # Decimal odds minus 1
+    q = 1 - probability  # Probability of losing
+    kelly_fraction = (b * probability - q) / b
+
+    # Calculate the recommended bet
+    recommended_bet = (temper * kelly_fraction) * bankroll
+
+    return recommended_bet
+
+def combine_parlay_odds(odds_list):
+    total_multiplier = 1
+    for odds in odds_list:
+        if odds > 0:  # Positive odds
+            total_multiplier *= (odds / 100) + 1
+        else:  # Negative odds
+            total_multiplier *= 1 - (100 / (odds + 0.0000001))
+
+    # Calculate parlay odds
+    if total_multiplier >= 2:
+        parlay_odds = (total_multiplier - 1) * 100
+    else:
+        parlay_odds = -100 / ((total_multiplier - 1) + 0.00000001)
+
+    return round(parlay_odds)
+def print_wrapper(func):
+    ansi_reset = '\033[0m'
+    ansi_black = '\033[90m'
+    ansi_red = '\033[91m'
+    ansi_green = '\033[92m'
+    ansi_yellow = '\033[93m'
+    ansi_blue = '\033[94m'
+    ansi_pink = '\033[95m'
+    ansi_teal = '\033[96m'
+    ansi_gray = '\033[97m'
+    ansi_warning = '\033[31;1;4m'
+    ansi_error = '\033[31;100m'
+    def wrapped_func(*args,**kwargs):
+        new_args = args + tuple()
+        new_kwargs = kwargs.copy()
+        for kwarg, kwvalue in kwargs.items(): # Loop through the keyword arguments
+            if kwarg == "color":
+                if kwvalue == "black":
+                    color = ansi_black
+                elif kwvalue == "red":
+                    color = ansi_red
+                elif kwvalue == "green":
+                    color = ansi_green
+                elif kwvalue == "yellow":
+                    color = ansi_yellow
+                elif kwvalue == "blue":
+                    color = ansi_blue
+                elif kwvalue == "pink":
+                    color = ansi_pink
+                elif kwvalue == "teal":
+                    color = ansi_teal
+                elif kwvalue == "gray":
+                    color = ansi_gray
+                elif kwvalue == "warning":
+                    color = ansi_warning
+                elif kwvalue == "error":
+                    color = ansi_error
+                new_kwargs = kwargs.copy() # Make a copy of the keyword arguments dict
+                del new_kwargs["color"] # Remove color from the keyword arguments dict
+        try: # Is the variable color defined?
+            color
+        except NameError:
+            pass
+            # no color was specified
+        else:
+            new_args = ()
+            for arg in args:
+                new_args += (f"{color}{arg}{ansi_reset}",) # Apply the ANSI escape codes to each non-keyword argument
+        return func(*new_args,**new_kwargs)
+    return wrapped_func
+
+print = print_wrapper(print) # Apply the wrapper to the print() function
+
+def probability_to_american_odds(probability):
+    if probability < 0 or probability > 1:
+        raise ValueError("Probability must be between 0 and 1")
+
+    if probability == 0.5:
+        return 100  # Even odds
+
+    if probability > 0.5:
+        return int(-100 * (probability / (1 - probability)))
+    else:
+        return int(100 * ((1 - probability) / probability))
+
+def odds_to_str(odds):
+  if odds <= 0:
+    return odds
+  else:
+    return f'+{odds}'
+
+
+    thresh = 0.5
+
+def process_data_frame(df):
+    df['DATE'] = pd.to_datetime(df['DATE'])
+    return df.sort_values('DATE')
+
+def update_bankroll(bankroll, profit):
+    bankroll += profit
+    return max(bankroll, 0)  # Prevents negative bankroll
+
+def print_bet_results(date, wins, losses, total, bankroll, start, hit_all, all_odds, hit_all_all, all_all_odds):
+    win_rate = wins / total if total > 0 else 0
+
+    if hit_all and total > 1:
+      print(f'\tBANGGG!!! Hit a {total} leg parlay at +{combine_parlay_odds(all_odds)} - pays {round(calculate_profit(combine_parlay_odds(all_odds), bankroll*0.1), 2)}')
+    if hit_all_all and total > 1:
+      print(f'\t HOLY SHIT WE CLEARED A {total} LEG SLATE AT +{combine_parlay_odds(all_all_odds)} PAID {round(calculate_profit(combine_parlay_odds(all_all_odds), 10), 2)}')
+    print(f'Results: bankroll start: {round(start,2)} end: {round(bankroll,2)} for profit of: {round(bankroll - start, 2)}, win rate = {win_rate:.2f}\n')
+
+
+def predict_today(data, model):
+    best_model = model
     TODAY_MAP = data.get_today_data()
+    t_teams = list(TODAY_MAP.keys())
     pre_tdf = data.df[(data.df['Season'] == 2024)]
     raw_tdf = data.get_ydf()
     raw_tdf.columns = data.t_cleaned_cols
@@ -98,12 +250,12 @@ def prdict_today(data):
     # Clean up and remove the temporary 'Prev_Result' column
     tdf.drop('Prev_Result', axis=1, inplace=True)
 
-    ref_map = {team: details[0] for team, details in data.TODAY_MAP.items()}
-    moneyline_map = {team: details[1] for team, details in data.TODAY_MAP.items()}
-    venue_map = {team: details[2] for team, details in data.TODAY_MAP.items()}
-    opp_map = {team: details[3] for team, details in data.TODAY_MAP.items()}
-    spread_map = {team: details[4] for team, details in data.TODAY_MAP.items()}
-    total_map = {team: details[5] for team, details in data.TODAY_MAP.items()}
+    ref_map = {team: details[0] for team, details in TODAY_MAP.items()}
+    moneyline_map = {team: details[1] for team, details in TODAY_MAP.items()}
+    venue_map = {team: details[2] for team, details in TODAY_MAP.items()}
+    opp_map = {team: details[3] for team, details in TODAY_MAP.items()}
+    spread_map = {team: details[4] for team, details in TODAY_MAP.items()}
+    total_map = {team: details[5] for team, details in TODAY_MAP.items()}
 
 
     tdf['DATE'] = tdf['DATE'].astype('datetime64[ns]')
@@ -127,10 +279,10 @@ def prdict_today(data):
 
     # look at the latest
     temp = temp.sort_values(by=['TEAM', 'DATE'], ascending=[True, False])
-    temp = temp.drop_duplicates(subset='TEAM')[t_train_cols]
+    temp = temp.drop_duplicates(subset='TEAM')[data.t_train_cols]
 
     temp = temp[temp['TEAM'].isin(t_teams)]
-    temp.columns = train_cols_final
+    temp.columns = data.train_cols_final
 
     X = temp.copy()
     X['MONEYLINE'] = X['TEAM'].map(moneyline_map)
@@ -146,17 +298,18 @@ def prdict_today(data):
     # make predictions
     probs = best_model.predict_proba(X)
     odds = X['MONEYLINE'].values
-    booster = best_model.get_booster()
+    #booster = best_model.get_booster()
     normed_odds = {team: best_model.predict_proba(X[X['TEAM'] == team])[:, 1]/(best_model.predict_proba(X[X['TEAM'] == team])[:, 1] + best_model.predict_proba(X[X['TEAM'] == opp])[:, 1]) for team, opp in zip(X['TEAM'], X['Opponent'])}
     do_bet = {team: normed_odds[team] > normed_odds[opp] for team, opp in zip(X['TEAM'], X['Opponent'])}
 
-    pred_contribs = booster.predict(DMatrix(X, enable_categorical=True), pred_contribs=True)
+    #pred_contribs = booster.predict(DMatrix(X, enable_categorical=True), pred_contribs=True)
+    pred_contribs = np.ones(shape=(len(X), len(X)))
 
-
+    output_html = ''
     for team, win, prob, opp, contribs, elo, mom in zip(X['TEAM'].values, best_model.predict(X), best_model.predict_proba(X)[:, 1], X['Opponent'].values, pred_contribs[:, :-1], X['Elo_Rating'].values, X['Momentum'].values):
         # get the most important features
-        helpers = np.array(TRAIN_COLS)[np.argpartition(contribs, -3)[-3:]]
-        detractions = (np.array(TRAIN_COLS)[np.argpartition(contribs, -3)[:3]])
+        helpers = np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[-3:]]
+        detractions = (np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[:3]])
 
         # get this team odds
         o = -100 if moneyline_map[team] == 'Even' else int(moneyline_map[team])
@@ -186,7 +339,33 @@ def prdict_today(data):
             lose_color = 'red'
             b = f'Stright bet {round(bet, 2)}u to win {round(calculate_profit(o, round(bet, 2)),2)}u' if round(bet, 2) > 0 else 'Don\'t bet this straight - parlay only'
 
-            t = HTML(f"""<div style="display:flex"> \
+            # t = HTML(f"""<div style="display:flex"> \
+            #             <div style="margin-left:3%; width: 400px"> \
+            #                 <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
+            #                 <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
+            #                 <h3>{b}</h3>
+            #                 <h3> Team Rating: {int(elo)} </h3>
+            #                 <h3> Momentum: {int(mom)} </h3>
+            #                 <h3> Best Features: </h3>
+            #                 <h4> - {tab + helpers[0]} </h4>
+            #                 <h4> - {tab + helpers[1]} </h4>
+            #                 <h4> - {tab + helpers[2]} </h4>
+            #             </div>
+
+            #             <div style="width: 400px"> \
+            #                 <h2 style="color:{lose_color}">{odd2} : {opp} : {our_opp_line}</h2> \
+            #                 <h3>{round(normed_odds[opp][0]*100, 2)}% win probability</h3> \
+            #                 <h3>Don\'t bet on this</h3> \
+            #                 <h3> Team Rating: {int(X[X["TEAM"] == opp]["Elo_Rating"])} </h3>
+            #                 <h3> Momentum: {int(X[X["TEAM"] == opp]["Momentum"])} </h3>
+            #                 <h3> Opp Mitigations: </h3>
+            #                 <h4> - {tab + detractions[0]} </h4>
+            #                 <h4> - {tab + detractions[1]} </h4>
+            #                 <h4> - {tab + detractions[2]} </h4>
+            #             </div> \
+            #         </div>""")
+            # #display(t)
+            output_html += f"""<div style="display:flex"> \
                         <div style="margin-left:3%; width: 400px"> \
                             <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
                             <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
@@ -210,15 +389,41 @@ def prdict_today(data):
                             <h4> - {tab + detractions[1]} </h4>
                             <h4> - {tab + detractions[2]} </h4>
                         </div> \
-                    </div>""")
-            display(t)
+                    </div>\n"""
             print('___________________________________________________________________________________________________________')
 
         elif do_bet[team] and (bet < 0):
             win_color = '#E4CD05'
             lose_color = 'orange'
             b = f'Stright bet {round(bet, 2)}u to win {round(calculate_profit(o, round(bet, 2)),2)}u' if round(bet, 2) > 0 else 'Don\'t bet this straight - parlay only'
-            t = HTML(f"""<div style="display:flex"> \
+            # t = HTML(f"""<div style="display:flex"> \
+            #             <div style="margin-left:3%; width: 400px"> \
+            #                 <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
+            #                 <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
+            #                 <h3>{b}</h3>
+            #                 <h3> Team Rating: {int(elo)} </h3>
+            #                 <h3> Momentum: {int(mom)} </h3>
+            #                 <h3> Best Features: </h3>
+            #                 <h4> - {tab + helpers[0]} </h4>
+            #                 <h4> - {tab + helpers[1]} </h4>
+            #                 <h4> - {tab + helpers[2]} </h4>
+            #             </div>
+
+            #             <div style="width: 400px"> \
+            #                 <h2 style="color:{lose_color}">{odd2} : {opp} : {our_opp_line}</h2> \
+            #                 <h3>{round(normed_odds[opp][0]*100, 2)}% win probability</h3> \
+            #                 <h3>Don\'t bet on this</h3> \
+            #                 <h3> Team Rating: {int(X[X["TEAM"] == opp]["Elo_Rating"])} </h3>
+            #                 <h3> Momentum: {int(X[X["TEAM"] == opp]["Momentum"])} </h3>
+            #                 <h3> Opp Mitigations: </h3>
+            #                 <h4> - {tab + detractions[0]} </h4>
+            #                 <h4> - {tab + detractions[1]} </h4>
+            #                 <h4> - {tab + detractions[2]} </h4>
+            #             </div> \
+            #         </div>""")
+            
+            #display(t)
+            output_html += f"""<div style="display:flex"> \
                         <div style="margin-left:3%; width: 400px"> \
                             <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
                             <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
@@ -242,9 +447,9 @@ def prdict_today(data):
                             <h4> - {tab + detractions[1]} </h4>
                             <h4> - {tab + detractions[2]} </h4>
                         </div> \
-                    </div>""")
-            display(t)
+                    </div>\n"""
             print('___________________________________________________________________________________________________________')
 
 
-            print('Done')
+    with open('Output.html', 'w', encoding='utf-8') as f:
+        f.write(output_html)

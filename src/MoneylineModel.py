@@ -14,8 +14,11 @@ class MoneylineModel(Model):
 
         if pretrained:
             if base_model == 'xgb':
+                print('loading model')
                 self.model = xgb.XGBClassifier().load_model(self.model_file_loc)
+                print('loading ensemble')
                 self.ensemble = self.__load_ensemble__()
+                print('MODELS LOADED')
             else:
                 print('unrecognized model type...')
                 exit()

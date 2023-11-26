@@ -48,6 +48,6 @@ if __name__ == "__main__":
     
     if args.get_predictions:
         print('get today predictions...')
-        utils.predict_today(data)
+        utils.predict_today(data, model)
 
     
