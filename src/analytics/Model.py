@@ -1,7 +1,7 @@
 class Model:
     def __init__(self, 
-                    model_file='./models/best_model.json', 
-                    ensemble_dir='./ensemble/', 
+                    model_file='../models/best_model.json', 
+                    ensemble_dir='../ensemble/', 
                     ensemble_base_model_name='e_model'):
 
         self.model_file_loc = model_file

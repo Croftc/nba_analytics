@@ -1,0 +1,20 @@
+<div class="card mb-3">
+    <div class="card-body">
+        {% for team in matchup %}
+        <div class="team mb-3">
+            <img src="{{ team.logo }}" alt="{{ team.team }} logo">
+            <h3 class="card-title">{{ team.team }}</h3>
+            <p class="card-text">{{ team.win_probability }}% win probability</p>
+            <p class="card-text">Unit size: {{ team.bet }}</p>
+            <p class="card-text">Team Rating: {{ team.team_rating }}</p>
+            <p class="card-text">Momentum: {{ team.momentum }}</p>
+            <h4>Best Features:</h4>
+            <ul>
+                {% for feature in team.best_features %}
+                <li>{{ feature }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+</div>

@@ -1,7 +1,7 @@
 import xgboost as xgb
 import os
 import numpy as np
-from Model import Model
+from analytics.Model import Model
 
 
 class MoneylineModel(Model):

@@ -29,14 +29,14 @@ class Dataset():
         self.chrome_options = chrome_options if headless else None
         self.today_odds_data = None
         self.today_refs_data = None    
-        self.historical_data_dir = './historical_data/'
-        self.yesterday_data_dir = './live_data/'
-        self.today_data_dir = './live_data/'
+        self.historical_data_dir = '../historical_data/'
+        self.yesterday_data_dir = '../live_data/'
+        self.today_data_dir = '../live_data/'
         self.TODAY_FILE = self.__download_current_data__('11-25-2023')
         self.today_data_file = f'./{self.today_data_dir}{self.TODAY_FILE}.json'
         self.column_mappings = None
-        self.column_mappings_file = './config/column_mappings.json'
-        self.filename = './live_data/dataframe.pkl'
+        self.column_mappings_file = '../config/column_mappings.json'
+        self.filename = '../live_data/dataframe.pkl'
 
         with open(self.column_mappings_file, 'r') as file:
             self.column_mappings = json.load(file)

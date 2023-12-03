@@ -1,6 +1,6 @@
 import argparse
-from MoneylineModel import MoneylineModel
-from Dataset import Dataset
+from analytics.MoneylineModel import MoneylineModel
+from analytics.Dataset import Dataset
 from BacktestEngine import BacktestEngine
 import matplotlib.pyplot as plt
 import utils
