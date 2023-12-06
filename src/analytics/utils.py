@@ -7,10 +7,8 @@ from analytics.MoneylineModel import MoneylineModel
 from analytics.Dataset import Dataset
 warnings.filterwarnings('ignore')
 
-if data == None:
-    data = Dataset()
-if model == None:
-    model = MoneylineModel(do_ensemble=True)
+data = Dataset()
+model = MoneylineModel(do_ensemble=True)
 
 team_logos = {
     "Atlanta": "https://content.sportslogos.net/logos/6/220/thumbs/22081902021.gif",
