@@ -23,7 +23,7 @@ team_logos = {
     "LA Clippers": "https://content.sportslogos.net/logos/6/236/thumbs/23654622016.gif",
     "LA Lakers": "https://content.sportslogos.net/logos/6/237/thumbs/23787452016.gif",
     "Memphis": "https://content.sportslogos.net/logos/6/231/thumbs/23143732019.gif",
-    "Miami": "https://content.sportslogos.net/logos/6/214/thumbs/21492092018.gif",
+    "Miami": "https://content.sportslogos.net/logos/6/214/thumbs/burm5gh2wvjti3xhei5h16k8e.gif",
     "Milwaukee": "https://content.sportslogos.net/logos/6/225/thumbs/22582752016.gif",
     "Minnesota": "https://content.sportslogos.net/logos/6/232/thumbs/23296692018.gif",
     "New Orleans": "https://content.sportslogos.net/logos/6/4962/thumbs/496226812014.gif",
@@ -187,10 +187,12 @@ def print_bet_results(date, wins, losses, total, bankroll, start, hit_all, all_o
 
 
 def predict_today(data=None, model=None):
+
     if data == None:
         data = Dataset()
     if model == None:
         model = MoneylineModel(do_ensemble=True)
+
     best_model = model
     TODAY_MAP = data.get_today_data()
     t_teams = list(TODAY_MAP.keys())
@@ -198,10 +200,12 @@ def predict_today(data=None, model=None):
     raw_tdf = data.get_ydf()
     raw_tdf.columns = data.t_cleaned_cols
 
+    
     tdf = raw_tdf
     tdf['DATE'] = tdf['DATE'].astype('datetime64[ns]')
     tdf = tdf.sort_values('DATE')
     tdf['Season'] = raw_tdf['BIGDATABALL_DATASET'].map(data.SEASON_MAP)
+
 
     # Step 1: Result of the Game
     def assign_results(group):
@@ -387,6 +391,9 @@ def predict_today(data=None, model=None):
             home['momentum'] = int(mom)
             home['best_features'] = helpers[:3]
             home['logo'] = team_logos[team]
+            home['vegas'] = odd
+            home['our_line'] = our_line
+            home['color'] = 'green'
 
             away['team'] = opp
             away['win_probability'] = round(normed_odds[opp][0]*100, 2)
@@ -395,33 +402,28 @@ def predict_today(data=None, model=None):
             away['momentum'] = int(X[X["TEAM"] == opp]["Momentum"])
             away['best_features'] = detractions[:3]
             away['logo'] = team_logos[opp]
+            away['vegas'] = odd2
+            away['our_line'] = our_opp_line
+            away['color'] = 'red'
 
-            output_html += f"""<div style="display:flex"> \
-                        <div style="margin-left:3%; width: 400px"> \
-                            <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
-                            <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
-                            <h3>{b}</h3>
-                            <h3> Team Rating: {int(elo)} </h3>
-                            <h3> Momentum: {int(mom)} </h3>
-                            <h3> Best Features: </h3>
-                            <h4> - {tab + helpers[0]} </h4>
-                            <h4> - {tab + helpers[1]} </h4>
-                            <h4> - {tab + helpers[2]} </h4>
-                        </div>
+            # output_html += f"""<div style="display:flex"> \
+            #             <div style="margin-left:3%; width: 400px"> \
+            #                 <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
+            #                 <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
+            #                 <h3>{b}</h3>
+            #                 <h3> Team Rating: {int(elo)} </h3>
+            #                 <h3> Momentum: {int(mom)} </h3>
+            #             </div>
 
-                        <div style="width: 400px"> \
-                            <h2 style="color:{lose_color}">{odd2} : {opp} : {our_opp_line}</h2> \
-                            <h3>{round(normed_odds[opp][0]*100, 2)}% win probability</h3> \
-                            <h3>Don\'t bet on this</h3> \
-                            <h3> Team Rating: {int(X[X["TEAM"] == opp]["Elo_Rating"])} </h3>
-                            <h3> Momentum: {int(X[X["TEAM"] == opp]["Momentum"])} </h3>
-                            <h3> Opp Mitigations: </h3>
-                            <h4> - {tab + detractions[0]} </h4>
-                            <h4> - {tab + detractions[1]} </h4>
-                            <h4> - {tab + detractions[2]} </h4>
-                        </div> \
-                    </div>\n"""
-            print('___________________________________________________________________________________________________________')
+            #             <div style="width: 400px"> \
+            #                 <h2 style="color:{lose_color}">{odd2} : {opp} : {our_opp_line}</h2> \
+            #                 <h3>{round(normed_odds[opp][0]*100, 2)}% win probability</h3> \
+            #                 <h3>Don\'t bet on this</h3> \
+            #                 <h3> Team Rating: {int(X[X["TEAM"] == opp]["Elo_Rating"])} </h3>
+            #                 <h3> Momentum: {int(X[X["TEAM"] == opp]["Momentum"])} </h3>
+            #             </div> \
+            #         </div>\n"""
+            # print('___________________________________________________________________________________________________________')
 
         elif do_bet[team] and (bet < 0):
             win_color = '#E4CD05'
@@ -435,6 +437,9 @@ def predict_today(data=None, model=None):
             home['momentum'] = int(mom)
             home['best_features'] = helpers[:3]
             home['logo'] = team_logos[team]
+            home['vegas'] = odd
+            home['our_line'] = our_line
+            home['color'] = 'yellow'
 
             away['team'] = opp
             away['win_probability'] = round(normed_odds[opp][0]*100, 2)
@@ -443,37 +448,31 @@ def predict_today(data=None, model=None):
             away['momentum'] = int(X[X["TEAM"] == opp]["Momentum"])
             away['best_features'] = detractions[:3]
             away['logo'] = team_logos[opp]
+            away['vegas'] = odd2
+            away['our_line'] = our_opp_line
+            away['color'] = 'orange'
 
-            output_html += f"""<div style="display:flex"> \
-                        <div style="margin-left:3%; width: 400px"> \
-                            <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
-                            <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
-                            <h3>{b}</h3>
-                            <h3> Team Rating: {int(elo)} </h3>
-                            <h3> Momentum: {int(mom)} </h3>
-                            <h3> Best Features: </h3>
-                            <h4> - {tab + helpers[0]} </h4>
-                            <h4> - {tab + helpers[1]} </h4>
-                            <h4> - {tab + helpers[2]} </h4>
-                        </div>
+            # output_html += f"""<div style="display:flex"> \
+            #             <div style="margin-left:3%; width: 400px"> \
+            #                 <h2 style="color:{win_color}">{odd} : {team} : {our_line}</h2> \
+            #                 <h3>{round(normed_odds[team][0]*100, 2)}% win probability</h3> \
+            #                 <h3>{b}</h3>
+            #                 <h3> Team Rating: {int(elo)} </h3>
+            #                 <h3> Momentum: {int(mom)} </h3>
+            #             </div>
 
-                        <div style="width: 400px"> \
-                            <h2 style="color:{lose_color}">{odd2} : {opp} : {our_opp_line}</h2> \
-                            <h3>{round(normed_odds[opp][0]*100, 2)}% win probability</h3> \
-                            <h3>Don\'t bet on this</h3> \
-                            <h3> Team Rating: {int(X[X["TEAM"] == opp]["Elo_Rating"])} </h3>
-                            <h3> Momentum: {int(X[X["TEAM"] == opp]["Momentum"])} </h3>
-                            <h3> Opp Mitigations: </h3>
-                            <h4> - {tab + detractions[0]} </h4>
-                            <h4> - {tab + detractions[1]} </h4>
-                            <h4> - {tab + detractions[2]} </h4>
-                        </div> \
-                    </div>\n"""
-            print('___________________________________________________________________________________________________________')
+            #             <div style="width: 400px"> \
+            #                 <h2 style="color:{lose_color}">{odd2} : {opp} : {our_opp_line}</h2> \
+            #                 <h3>{round(normed_odds[opp][0]*100, 2)}% win probability</h3> \
+            #                 <h3>Don\'t bet on this</h3> \
+            #                 <h3> Team Rating: {int(X[X["TEAM"] == opp]["Elo_Rating"])} </h3>
+            #                 <h3> Momentum: {int(X[X["TEAM"] == opp]["Momentum"])} </h3>
+            #             </div> \
+            #         </div>\n"""
+            # print('___________________________________________________________________________________________________________')
 
         if 'team' in home:
             matchups.append([home, away])
-
 
     with open('Output.html', 'w', encoding='utf-8') as f:
         f.write(output_html)

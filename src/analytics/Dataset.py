@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import shutil
 import requests
 
@@ -19,7 +19,7 @@ class Dataset():
                     headless=True, 
                     odds_url='https://espnbet.com/sport/basketball/organization/united-states/competition/nba/featured-page', 
                     refs_url='https://official.nba.com/referee-assignments/',
-                    scrape_live_data=False):
+                    scrape_live_data=True):
 
         self.data_is_processed = False
         self.odds_config = {'teams_div_class': 'flex p-0'}
@@ -32,7 +32,7 @@ class Dataset():
         self.historical_data_dir = '../historical_data/'
         self.yesterday_data_dir = '../live_data/'
         self.today_data_dir = '../live_data/'
-        self.TODAY_FILE = self.__download_current_data__('11-25-2023')
+        self.TODAY_FILE = self.__download_current_data__()
         self.today_data_file = f'./{self.today_data_dir}{self.TODAY_FILE}.json'
         self.column_mappings = None
         self.column_mappings_file = '../config/column_mappings.json'
@@ -110,7 +110,9 @@ class Dataset():
         listtoken = "421f46cd8fe7a43b705e438648517e48"
         
         # Get current date in the required format
-        current_date = datetime.now().strftime("%m-%d-%Y") if date == None else date
+        current_date = datetime.now()
+        yesterday = current_date - timedelta(1)
+        current_date = yesterday.strftime("%m-%d-%Y") if date == None else date
         filename = f"{current_date}-nba-season-team-feed.xlsx"
         outofthebox_path = f"%2F{filename}"
 
@@ -118,17 +120,19 @@ class Dataset():
         full_url = f"{base_url}&OutoftheBoxpath={outofthebox_path}&lastpath=%2F&account_id={account_id}&listtoken={listtoken}&dl=1"
 
         # Directory to save the file
-        save_dir = '.\live_data'
-        save_path = os.path.join(save_dir, filename)
+        save_dir = '..\live_data'
+        save_path = f'{save_dir}\{filename}' #os.path.join(save_dir, filename)
 
         # don't redownload if we already have it
+        print(save_path)
         if os.path.exists(save_path):
+            print('why')
             return filename
 
-        # Clear out the save directory
-        if os.path.exists(save_dir):
-            shutil.rmtree(save_dir)
-        os.makedirs(save_dir)
+        # Clear out the save directory (why?)
+        # if os.path.exists(save_dir):
+        #     shutil.rmtree(save_dir)
+        # os.makedirs(save_dir)
 
         # Use curl to download the file
         response = requests.get(full_url, stream=True)
@@ -196,7 +200,7 @@ class Dataset():
             venue = 'H' if i % 2 == 1 else 'R'
 
             # Initialize default values
-            moneyline = spread = total = 'BLANK_STRING'
+            moneyline = spread = total = '100'
 
             # Extract the moneyline, spread, and total from the bets
             if bets:
@@ -205,11 +209,11 @@ class Dataset():
 
                 # Spread is the value before the '-' in the first object
                 spread_data = bets[0]['type'][:4] if bets[0]['type'] else ''
-                spread = spread_data if spread_data else 'BLANK_STRING'
+                spread = spread_data if spread_data else '0'
 
                 # Total is the value before the '-' in the second object
                 total_data = bets[1]['value'].split('-')[0] if len(bets) > 1 and bets[1]['value'] else ''
-                total = total_data if total_data else 'BLANK_STRING'
+                total = total_data if total_data else '220'
 
             # Construct the output format
             output[city] = ['REF', moneyline, venue, self.team_city_map.get(data[opp_ind]['team_name']), spread, total]
@@ -395,17 +399,16 @@ class Dataset():
         expected_team = 1 / (1 + 10 ** ((opponent_elo - team_elo) / 400))
 
         # Actual outcome
-        actual_team = 1 if row['PTS'] > self.df[(self.df['GAME-ID'] == row['GAME-ID']) & (self.df['TEAM'] == opponent)]['PTS'].values[0] else 0
+        actual_team = row['Result']
 
         # Update Elo ratings
         self.elo_ratings[team] += self.K * (actual_team - expected_team)
-        self.elo_ratings[opponent] += self.K * ((1 - actual_team) - (1 - expected_team))
 
         # Calculate Elo difference
-        elo_diff = opponent_elo - team_elo
+        elo_diff = (opponent_elo - team_elo) if (opponent_elo - team_elo) > 10 else 10
 
         # Update momentum
-        self.momentum_scores[team] = self.momentum_decay * self.momentum_scores[team] + elo_diff * actual_team
+        self.momentum_scores[team] = self.momentum_decay * (self.momentum_scores[team] + elo_diff) if actual_team == 1 else self.momentum_decay * (self.momentum_scores[team] - (elo_diff/4))
 
         return self.elo_ratings[team], self.momentum_scores[team]
 
@@ -477,12 +480,17 @@ class Dataset():
 
     def __is_file_current__(self):
         # Check if the file exists and was created today
+        print(os.getcwd())
+        print(self.filename)
         if os.path.exists(self.filename):
-            file_creation_date = datetime.fromtimestamp(os.path.getctime(self.filename)).date()
-            return file_creation_date == datetime.now().date()
+            print('here...')
+            return True
         return False
 
-    def get_today_data(self, force_scrape=False):
+    def get_today_data(self, force_scrape=True):
+
+        #if self.today_data != None:
+        #    return self.today_data
 
         # don't scrape if we don't have to 
         if os.path.exists(self.today_data_file) and not force_scrape:

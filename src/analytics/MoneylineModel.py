@@ -32,6 +32,10 @@ class MoneylineModel(Model):
         
 
     def __load_ensemble__(self):
+
+        if len(self.ensemble) > 0:
+            print('returning in memory ensemble')
+            return self.ensemble
         for i, model in enumerate(os.listdir(self.ensemble_dir)):
             bst = xgb.XGBClassifier()
             bst.load_model(f'{self.ensemble_dir}{self.ensemble_base_model_name}_{i}.json')
@@ -64,7 +68,12 @@ class MoneylineModel(Model):
     
     def predict_proba(self, X):
         if self.do_ensemble and len(self.ensemble) > 0:
-            preds = np.array([model.predict_proba(X) for model in self.ensemble])
+            preds = []
+            for i, model in enumerate(self.ensemble):
+                if i%100 == 0:
+                    print(f'getting predictions from model {i}')
+                preds.append(model.predict_proba(X))
+            preds = np.array(preds)
             return preds.mean(axis=0).reshape(-1,2)
         else:
             return self.model.predict_proba(X)
