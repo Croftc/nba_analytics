@@ -189,7 +189,7 @@ def print_bet_results(date, wins, losses, total, bankroll, start, hit_all, all_o
     print(f'Results: bankroll start: {round(start,2)} end: {round(bankroll,2)} for profit of: {round(bankroll - start, 2)}, win rate = {win_rate:.2f}\n')
 
 
-def predict_today(data=None, model=None):
+def predict_today():
 
     best_model = model
     TODAY_MAP = data.get_today_data()
