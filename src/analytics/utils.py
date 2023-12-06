@@ -379,15 +379,18 @@ def predict_today(data=None, model=None):
         # tab character for spacing the prints
         tab = '&nbsp;&nbsp;&nbsp;&nbsp;'
         win_color, lose_color = 'black', 'black'
+        do_save = False
         # make picks
         if (bet >= 0) and do_bet[team]:
             win_color = 'green'
             lose_color = 'red'
+            do_save = True
             #b = f'Stright bet {round(bet, 2)}u to win {round(calculate_profit(o, round(bet, 2)),2)}u' if round(bet, 2) > 0 else 'Don\'t bet this straight - parlay only'
 
         elif do_bet[team] and (bet < 0):
             win_color = '#E4CD05'
             lose_color = 'orange'
+            do_save = True
             #b = f'Stright bet {round(bet, 2)}u to win {round(calculate_profit(o, round(bet, 2)),2)}u' if round(bet, 2) > 0 else 'Don\'t bet this straight - parlay only'
 
             # home['team'] = team
@@ -434,7 +437,7 @@ def predict_today(data=None, model=None):
         away['our_line'] = our_opp_line
         away['color'] = lose_color
 
-        if 'team' in home:
+        if do_save:
             matchups.append([home, away])
 
     with open('Output.html', 'w', encoding='utf-8') as f:
