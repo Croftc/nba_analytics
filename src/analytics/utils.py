@@ -7,6 +7,11 @@ from analytics.MoneylineModel import MoneylineModel
 from analytics.Dataset import Dataset
 warnings.filterwarnings('ignore')
 
+if data == None:
+    data = Dataset()
+if model == None:
+    model = MoneylineModel(do_ensemble=True)
+
 team_logos = {
     "Atlanta": "https://content.sportslogos.net/logos/6/220/thumbs/22081902021.gif",
     "Boston": "https://content.sportslogos.net/logos/6/213/thumbs/slhg02hbef3j1ov4lsnwyol5o.gif",
@@ -187,11 +192,6 @@ def print_bet_results(date, wins, losses, total, bankroll, start, hit_all, all_o
 
 
 def predict_today(data=None, model=None):
-
-    if data == None:
-        data = Dataset()
-    if model == None:
-        model = MoneylineModel(do_ensemble=True)
 
     best_model = model
     TODAY_MAP = data.get_today_data()
@@ -374,7 +374,7 @@ def predict_today(data=None, model=None):
         our_opp_line = str(our_opp_line) if our_opp_line < 0 else f'+{our_opp_line}'
 
         # get the bet sizing
-        bet = kelly_criterion(100, normed_odds[team], o, temper=0.5)
+        bet = kelly_criterion(100, normed_odds[team], o, temper=0.13)
 
         # tab character for spacing the prints
         tab = '&nbsp;&nbsp;&nbsp;&nbsp;'
