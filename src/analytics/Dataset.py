@@ -19,7 +19,7 @@ class Dataset():
                     headless=True, 
                     odds_url='https://espnbet.com/sport/basketball/organization/united-states/competition/nba/featured-page', 
                     refs_url='https://official.nba.com/referee-assignments/',
-                    scrape_live_data=True):
+                    scrape_live_data=False):
 
         self.data_is_processed = False
         self.odds_config = {'teams_div_class': 'flex p-0'}
