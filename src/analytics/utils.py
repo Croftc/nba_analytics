@@ -366,15 +366,15 @@ def predict_today(data=None, model=None):
         odd2 = str(o2) if o2 < 0 else f'+{o2}'
 
         # get out odds
-        our_line = probability_to_american_odds(normed_odds[team][0])
+        our_line = probability_to_american_odds(normed_odds[team])
         our_line = str(our_line) if our_line < 0 else f'+{our_line}'
 
         # get our opp odds
-        our_opp_line = probability_to_american_odds(normed_odds[opp][0])
+        our_opp_line = probability_to_american_odds(normed_odds[opp])
         our_opp_line = str(our_opp_line) if our_opp_line < 0 else f'+{our_opp_line}'
 
         # get the bet sizing
-        bet = kelly_criterion(100, normed_odds[team][0], o, temper=0.5)
+        bet = kelly_criterion(100, normed_odds[team], o, temper=0.5)
 
         # tab character for spacing the prints
         tab = '&nbsp;&nbsp;&nbsp;&nbsp;'
@@ -413,7 +413,7 @@ def predict_today(data=None, model=None):
             # away['color'] = 'orange'
         
         home['team'] = team
-        home['win_probability'] = round(normed_odds[team][0]*100, 2)
+        home['win_probability'] = round(normed_odds[team]*100, 2)
         home['bet'] = round(bet, 2)
         home['team_rating'] = int(elo)
         home['momentum'] = int(mom)
@@ -424,7 +424,7 @@ def predict_today(data=None, model=None):
         home['color'] = win_color
 
         away['team'] = opp
-        away['win_probability'] = round(normed_odds[opp][0]*100, 2)
+        away['win_probability'] = round(normed_odds[opp]*100, 2)
         away['bet'] = -1
         away['team_rating'] = int(X[X["TEAM"] == opp]["Elo_Rating"])
         away['momentum'] = int(X[X["TEAM"] == opp]["Momentum"])
