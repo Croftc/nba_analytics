@@ -17,7 +17,9 @@ class MoneylineModel(Model):
                 print('loading model')
                 self.model = xgb.XGBClassifier().load_model(self.model_file_loc)
                 print('loading ensemble')
-                self.ensemble = self.__load_ensemble__()
+
+                if do_ensemble:
+                    self.ensemble = self.__load_ensemble__()
                 print('MODELS LOADED')
             else:
                 print('unrecognized model type...')

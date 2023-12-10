@@ -4,11 +4,15 @@ import numpy as np
 import pandas as pd
 import warnings
 from analytics.MoneylineModel import MoneylineModel
+from analytics.TotalModel import TotalModel
+from analytics.SpreadModel import SpreadModel
 from analytics.Dataset import Dataset
 warnings.filterwarnings('ignore')
 
 data = Dataset()
 model = MoneylineModel(do_ensemble=True)
+total_model = TotalModel(do_ensemble=True)
+spread_model = SpreadModel(do_ensemble=True)
 
 team_logos = {
     "Atlanta": "https://content.sportslogos.net/logos/6/220/thumbs/22081902021.gif",
@@ -24,14 +28,14 @@ team_logos = {
     "Houston": "https://content.sportslogos.net/logos/6/230/thumbs/23068302020.gif",
     "Indiana": "https://content.sportslogos.net/logos/6/224/thumbs/22448122018.gif",
     "LA Clippers": "https://content.sportslogos.net/logos/6/236/thumbs/23654622016.gif",
-    "LA Lakers": "https://content.sportslogos.net/logos/6/237/thumbs/23787452016.gif",
+    "LA Lakers": "https://content.sportslogos.net/logos/6/237/thumbs/23773242024.gif",
     "Memphis": "https://content.sportslogos.net/logos/6/231/thumbs/23143732019.gif",
     "Miami": "https://content.sportslogos.net/logos/6/214/thumbs/burm5gh2wvjti3xhei5h16k8e.gif",
     "Milwaukee": "https://content.sportslogos.net/logos/6/225/thumbs/22582752016.gif",
     "Minnesota": "https://content.sportslogos.net/logos/6/232/thumbs/23296692018.gif",
     "New Orleans": "https://content.sportslogos.net/logos/6/4962/thumbs/496226812014.gif",
     "New York": "https://content.sportslogos.net/logos/6/216/thumbs/21671702024.gif",
-    "Oklahoma City": "https://content.sportslogos.net/logos/6/2687/thumbs/2687722018.gif",
+    "Oklahoma City": "https://content.sportslogos.net/logos/6/2687/thumbs/khmovcnezy06c3nm05ccn0oj2.gif",
     "Orlando": "https://content.sportslogos.net/logos/6/217/thumbs/wd9ic7qafgfb0yxs7tem7n5g4.gif",
     "Philadelphia": "https://content.sportslogos.net/logos/6/218/thumbs/21870342016.gif",
     "Phoenix": "https://content.sportslogos.net/logos/6/238/thumbs/23843702014.gif",
@@ -192,8 +196,9 @@ def print_bet_results(date, wins, losses, total, bankroll, start, hit_all, all_o
 def predict_today():
 
     best_model = model
-    TODAY_MAP = data.get_today_data()
-    t_teams = list(TODAY_MAP.keys())
+    TODAY_MAP, t_teams = data.get_today_data()
+    print(TODAY_MAP)
+    #t_teams = list(TODAY_MAP.keys())
     pre_tdf = data.df[(data.df['Season'] == 2024)]
     raw_tdf = data.get_ydf()
     raw_tdf.columns = data.t_cleaned_cols
@@ -214,7 +219,7 @@ def predict_today():
             group['Result'] = [0, 1]
 
         group['Opp_Avg_3_game_PTS'] = [group.iloc[1]['Avg_3_game_PTS'], group.iloc[0]['Avg_3_game_PTS']]
-        group['Opp_Avg_2_game_PTS'] = [group.iloc[1]['Avg_5_game_PTS'], group.iloc[0]['Avg_5_game_PTS']]
+        group['Opp_Avg_5_game_PTS'] = [group.iloc[1]['Avg_5_game_PTS'], group.iloc[0]['Avg_5_game_PTS']]
         group['Opp_Season_Avg_PTS'] = [group.iloc[1]['Season_Avg_PTS'], group.iloc[0]['Season_Avg_PTS']]
 
         group['Opp_Avg_3_game_POSS'] = [group.iloc[1]['Avg_3_game_POSS'], group.iloc[0]['Avg_3_game_POSS']]
@@ -336,12 +341,31 @@ def predict_today():
     X['TEAM_REST_DAYS'] = X['TEAM_REST_DAYS'].astype('category')
     X['VENUE'] = (X['VENUE'] == 'H')*1
 
+    X2 = X.copy()
+
+    try:
+        X2 = X2.drop(['OPENING_SPREAD'], axis=1)
+    except:
+        pass
+
     # make predictions
     probs = best_model.predict_proba(X)
+    total_probs = total_model.predict_proba(X2)
+    spread_probs = spread_model.predict_proba(X2)
+
+
+
     team_probs_map = {team: prob for team, prob in zip(X['TEAM'].values, probs[:, 1])}
+    team_spread_map = {team: prob for team, prob in zip(X['TEAM'].values, spread_probs[:, 1])}
+    team_total_map = {team: prob for team, prob in zip(X['TEAM'].values, total_probs[:, 1])}
+
     odds = X['MONEYLINE'].values
     #booster = best_model.get_booster()
     normed_odds = {team: team_probs_map[team]/(team_probs_map[team] + team_probs_map[opp]) for team, opp in zip(X['TEAM'], X['Opponent'])}
+    normed_spread_odds = {team: team_spread_map[team]/(team_spread_map[team] + team_spread_map[opp]) for team, opp in zip(X['TEAM'], X['Opponent'])}
+
+    normed_elos = {team: (int(X[X["TEAM"] == team]["Elo_Rating"]) - int(X["Elo_Rating"].min()))/(int(X["Elo_Rating"].max() - int(X["Elo_Rating"].min()))) for team in X['TEAM']}
+    normed_moms = {team: (int(X[X["TEAM"] == team]["Momentum"]) - int(X["Momentum"].min()))/(int(X["Momentum"].max() - int(X["Momentum"].min()))) for team in X['TEAM']}
     do_bet = {team: normed_odds[team] > normed_odds[opp] for team, opp in zip(X['TEAM'], X['Opponent'])}
 
     #pred_contribs = booster.predict(DMatrix(X, enable_categorical=True), pred_contribs=True)
@@ -352,8 +376,8 @@ def predict_today():
     for team, prob, opp, contribs, elo, mom in zip(X['TEAM'].values, probs[:, 1], X['Opponent'].values, pred_contribs[:, :-1], X['Elo_Rating'].values, X['Momentum'].values):
         home, away = {}, {}
         # get the most important features
-        helpers = np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[-3:]]
-        detractions = (np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[:3]])
+        #helpers = np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[-3:]]
+        #detractions = (np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[:3]])
 
         # get this team odds
         o = -100 if moneyline_map[team] == 'Even' else int(moneyline_map[team])
@@ -380,8 +404,8 @@ def predict_today():
         do_save = False
         # make picks
         if (bet >= 0) and do_bet[team]:
-            win_color = 'green'
-            lose_color = 'red'
+            win_color = 'rgba(0,255,0,0.5)'
+            lose_color = 'rgba(255,0,0,0.5)'
             do_save = True
             #b = f'Stright bet {round(bet, 2)}u to win {round(calculate_profit(o, round(bet, 2)),2)}u' if round(bet, 2) > 0 else 'Don\'t bet this straight - parlay only'
 
@@ -415,27 +439,53 @@ def predict_today():
         
         home['team'] = team
         home['win_probability'] = round(normed_odds[team]*100, 2)
-        home['bet'] = round(bet, 2)
+        home['bet'] = round(bet, 2) if bet > 0 else "No Bet"
         home['team_rating'] = int(elo)
         home['momentum'] = int(mom)
-        home['best_features'] = helpers[:3]
+        #home['best_features'] = helpers[:3]
         home['logo'] = team_logos[team]
         home['vegas'] = odd
         home['our_line'] = our_line
         home['color'] = win_color
+        home['head_ref'] = X[X["TEAM"] == team]["MAIN REF"].astype(str).values[0]
+        home['crew'] = X[X["TEAM"] == team]["CREW"]
+        home['rest_days'] = X[X["TEAM"] == team]["TEAM_REST_DAYS"]
+        home['venue'] = X[X["TEAM"] == team]["VENUE"]
+        home['data'] = X[X["TEAM"] == team]
+        home['normed_elo'] = normed_elos[team]*100
+        home['normed_mom'] = normed_moms[team]*100
+        home['cover_spread'] = normed_spread_odds[team] > 0.5
+        home['cover_total'] = (team_total_map[team] > 0.5)
+        home['cover_spread_color'] = 'rgba(0,255,0,0.5)' if normed_spread_odds[team] > 0.5 else 'rgba(255,0,0,0.5)'
+        home['cover_total_color'] = 'rgba(0,255,0,0.5)' if (team_total_map[team] > 0.5) else 'rgba(255,0,0,0.5)'
+        home['spread'] = X[X["TEAM"] == team]["CLOSING_SPREAD"].values[0]
+        home['total'] = X[X["TEAM"] == team]["CLOSING_TOTAL"].values[0]
 
         away['team'] = opp
         away['win_probability'] = round(normed_odds[opp]*100, 2)
-        away['bet'] = -1
+        away['bet'] = 'No Bet'
         away['team_rating'] = int(X[X["TEAM"] == opp]["Elo_Rating"])
         away['momentum'] = int(X[X["TEAM"] == opp]["Momentum"])
-        away['best_features'] = detractions[:3]
+        #away['best_features'] = detractions[:3]
         away['logo'] = team_logos[opp]
         away['vegas'] = odd2
         away['our_line'] = our_opp_line
         away['color'] = lose_color
+        away['head_ref'] = X[X["TEAM"] == opp]["MAIN REF"].astype(str).values[0]
+        away['crew'] = X[X["TEAM"] == opp]["CREW"]
+        away['rest_days'] = X[X["TEAM"] == opp]["TEAM_REST_DAYS"]
+        away['venue'] = X[X["TEAM"] == opp]["VENUE"]
+        away['data'] = X[X["TEAM"] == opp]
+        away['normed_elo'] = normed_elos[opp]*100
+        away['normed_mom'] = normed_moms[opp]*100
+        away['cover_spread'] = normed_spread_odds[opp] > 0.5
+        away['cover_total'] = (team_total_map[team] > 0.5)
+        away['spread'] = X[X["TEAM"] == opp]["CLOSING_SPREAD"].values[0]
+        away['total'] = X[X["TEAM"] == opp]["CLOSING_TOTAL"].values[0]
+        away['cover_spread_color'] = 'rgba(0,255,0,0.5)' if normed_spread_odds[opp] > 0.5 else 'rgba(255,0,0,0.5)'
+        away['cover_total_color'] = 'rgba(0,255,0,0.5)' if (team_total_map[team] > 0.5) else 'rgba(255,0,0,0.5)'
 
-        if do_save:
+        if do_save and (('REF' not in home['head_ref']) and ('REF' not in away['head_ref'])):
             matchups.append([home, away])
 
     with open('Output.html', 'w', encoding='utf-8') as f:

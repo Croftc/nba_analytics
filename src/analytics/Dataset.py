@@ -97,9 +97,10 @@ class Dataset():
         }
 
         if scrape_live_data:
-            self.today_data = self.get_today_data()
+            self.today_data, self.t_teams = self.get_today_data()
         else:
             self.today_data = None
+            self.t_teams = None
         
         self.historical_data = self.get_historical_data()
 
@@ -216,7 +217,8 @@ class Dataset():
                 total = total_data if total_data else '220'
 
             # Construct the output format
-            output[city] = ['REF', moneyline, venue, self.team_city_map.get(data[opp_ind]['team_name']), spread, total]
+            if city not in output:
+                output[city] = ['REF', moneyline, venue, self.team_city_map.get(data[opp_ind]['team_name']), spread, total]
 
         return output
 
@@ -516,10 +518,12 @@ class Dataset():
                 except:
                     pass
 
+            self.today_data = {k: v for k,v in self.today_data.items() if v[0] != 'REF'}
+
             with open(self.today_data_file,'w') as fp:
                 fp.write(json.dumps(self.today_data))
 
-            return self.today_data
+            return self.today_data, list(self.today_data.keys())
 
     def get_historical_data(self):
         if self.data_is_processed:
