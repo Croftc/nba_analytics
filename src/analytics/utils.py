@@ -485,7 +485,7 @@ def predict_today():
         away['cover_spread_color'] = 'rgba(0,255,0,0.5)' if normed_spread_odds[opp] > 0.5 else 'rgba(255,0,0,0.5)'
         away['cover_total_color'] = 'rgba(0,255,0,0.5)' if (team_total_map[team] > 0.5) else 'rgba(255,0,0,0.5)'
 
-        if do_save and (('REF' not in home['head_ref']) and ('REF' not in away['head_ref'])):
+        if do_save:
             matchups.append([home, away])
 
     with open('Output.html', 'w', encoding='utf-8') as f:

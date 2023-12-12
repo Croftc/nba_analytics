@@ -1,3 +1,6 @@
 *.pyc
-\src\__pycache__\
-\models\*.zip
+/src/__pycache__/
+/models/*.zip
+ensemble_old/*
+*.zip
+*.pem

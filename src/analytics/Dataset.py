@@ -518,7 +518,7 @@ class Dataset():
                 except:
                     pass
 
-            self.today_data = {k: v for k,v in self.today_data.items() if v[0] != 'REF'}
+            #self.today_data = {k: v for k,v in self.today_data.items() if v[0] != 'REF'}
 
             with open(self.today_data_file,'w') as fp:
                 fp.write(json.dumps(self.today_data))
