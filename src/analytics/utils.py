@@ -175,6 +175,43 @@ def odds_to_str(odds):
 
     thresh = 0.5
 
+def categorize_rest_days(team, today_date, df):
+    # Filter DataFrame for the specific team and sort by date
+    team_games = df[df['TEAM'] == team].sort_values(by='DATE')
+
+    # Find games up to today's date
+    past_games = team_games[team_games['DATE'] < today_date]
+
+    # Check if no games played
+    if past_games.empty:
+        return 'No games played'
+
+    # Calculate the number of days since the last game
+    last_game_date = past_games.iloc[-1]['DATE']
+    days_since_last_game = (today_date - last_game_date).days - 1
+
+    # Check for 3 games in 4 days (including B2B scenarios)
+    if len(past_games) >= 3 and (today_date - past_games.iloc[-3]['DATE']).days <= 4:
+        return '3IN4-B2B' if days_since_last_game == 0 else '3IN4'
+
+    # Check for 4 games in 5 days (including B2B scenarios)
+    if len(past_games) >= 4 and (today_date - past_games.iloc[-4]['DATE']).days <= 5:
+        return '4IN5-B2B' if days_since_last_game == 0 else '4IN5'
+
+    # Standard cases
+    # Check for back-to-back games
+    if days_since_last_game == 0:
+        return 'B2B'
+    if days_since_last_game >= 3:
+        return '3+'
+    elif days_since_last_game == 2:
+        return '2'
+    elif days_since_last_game == 1:
+        return '1'
+
+    return 'No category'
+
+
 def process_data_frame(df):
     df['DATE'] = pd.to_datetime(df['DATE'])
     return df.sort_values('DATE')
@@ -192,21 +229,23 @@ def print_bet_results(date, wins, losses, total, bankroll, start, hit_all, all_o
       print(f'\t HOLY SHIT WE CLEARED A {total} LEG SLATE AT +{combine_parlay_odds(all_all_odds)} PAID {round(calculate_profit(combine_parlay_odds(all_all_odds), 10), 2)}')
     print(f'Results: bankroll start: {round(start,2)} end: {round(bankroll,2)} for profit of: {round(bankroll - start, 2)}, win rate = {win_rate:.2f}\n')
 
+def prep_data(TODAY_MAP, t_teams):
 
-def predict_today():
-
-    best_model = model
-    TODAY_MAP, t_teams = data.get_today_data()
-    print(TODAY_MAP)
-    #t_teams = list(TODAY_MAP.keys())
+    # get the data for just this season
     pre_tdf = data.df[(data.df['Season'] == 2024)]
+
+    # get the dataframe for yesterday and clean the columns
     raw_tdf = data.get_ydf()
     raw_tdf.columns = data.t_cleaned_cols
 
-    
+    # make a copy
     tdf = raw_tdf
+
+    # set the date col as datetime and sort
     tdf['DATE'] = tdf['DATE'].astype('datetime64[ns]')
     tdf = tdf.sort_values('DATE')
+
+    # map seasons
     tdf['Season'] = raw_tdf['BIGDATABALL_DATASET'].map(data.SEASON_MAP)
 
 
@@ -242,24 +281,24 @@ def predict_today():
 
 
     # Step 2: Average Points
-    tdf['Avg_3_game_PTS'] = tdf.groupby(['TEAM', 'Season'])['PTS'].transform(lambda x: x.shift(1).rolling(3).mean())
-    tdf['Avg_5_game_PTS'] = tdf.groupby(['TEAM', 'Season'])['PTS'].transform(lambda x: x.shift(1).rolling(5).mean())
+    tdf['Avg_3_game_PTS'] = tdf.groupby(['TEAM', 'Season'])['PTS'].transform(lambda x: x.rolling(3).mean())
+    tdf['Avg_5_game_PTS'] = tdf.groupby(['TEAM', 'Season'])['PTS'].transform(lambda x: x.rolling(5).mean())
     tdf['Season_Avg_PTS'] = tdf.groupby(['TEAM', 'Season'])['PTS'].transform('mean')
 
-    tdf['Avg_3_game_POSS'] = tdf.groupby(['TEAM', 'Season'])['POSS'].transform(lambda x: x.shift(1).rolling(3).mean())
-    tdf['Avg_5_game_POSS'] = tdf.groupby(['TEAM', 'Season'])['POSS'].transform(lambda x: x.shift(1).rolling(5).mean())
+    tdf['Avg_3_game_POSS'] = tdf.groupby(['TEAM', 'Season'])['POSS'].transform(lambda x: x.rolling(3).mean())
+    tdf['Avg_5_game_POSS'] = tdf.groupby(['TEAM', 'Season'])['POSS'].transform(lambda x: x.rolling(5).mean())
     tdf['Season_Avg_POSS'] = tdf.groupby(['TEAM', 'Season'])['POSS'].transform('mean')
 
-    tdf['Avg_3_game_PACE'] = tdf.groupby(['TEAM', 'Season'])['PACE'].transform(lambda x: x.shift(1).rolling(3).mean())
-    tdf['Avg_5_game_PACE'] = tdf.groupby(['TEAM', 'Season'])['PACE'].transform(lambda x: x.shift(1).rolling(5).mean())
+    tdf['Avg_3_game_PACE'] = tdf.groupby(['TEAM', 'Season'])['PACE'].transform(lambda x: x.rolling(3).mean())
+    tdf['Avg_5_game_PACE'] = tdf.groupby(['TEAM', 'Season'])['PACE'].transform(lambda x: x.rolling(5).mean())
     tdf['Season_Avg_PACE'] = tdf.groupby(['TEAM', 'Season'])['PACE'].transform('mean')
 
-    tdf['Avg_3_game_OEFF'] = tdf.groupby(['TEAM', 'Season'])['OEFF'].transform(lambda x: x.shift(1).rolling(3).mean())
-    tdf['Avg_5_game_OEFF'] = tdf.groupby(['TEAM', 'Season'])['OEFF'].transform(lambda x: x.shift(1).rolling(5).mean())
+    tdf['Avg_3_game_OEFF'] = tdf.groupby(['TEAM', 'Season'])['OEFF'].transform(lambda x: x.rolling(3).mean())
+    tdf['Avg_5_game_OEFF'] = tdf.groupby(['TEAM', 'Season'])['OEFF'].transform(lambda x: x.rolling(5).mean())
     tdf['Season_Avg_OEFF'] = tdf.groupby(['TEAM', 'Season'])['OEFF'].transform('mean')
 
-    tdf['Avg_3_game_DEFF'] = tdf.groupby(['TEAM', 'Season'])['DEFF'].transform(lambda x: x.shift(1).rolling(3).mean())
-    tdf['Avg_5_game_DEFF'] = tdf.groupby(['TEAM', 'Season'])['DEFF'].transform(lambda x: x.shift(1).rolling(5).mean())
+    tdf['Avg_3_game_DEFF'] = tdf.groupby(['TEAM', 'Season'])['DEFF'].transform(lambda x: x.rolling(3).mean())
+    tdf['Avg_5_game_DEFF'] = tdf.groupby(['TEAM', 'Season'])['DEFF'].transform(lambda x: x.rolling(5).mean())
     tdf['Season_Avg_DEFF'] = tdf.groupby(['TEAM', 'Season'])['DEFF'].transform('mean')
 
 
@@ -269,13 +308,19 @@ def predict_today():
     tdf.reset_index(drop=True, inplace=True)
 
     # Shift the Result column for streak calculation
-    tdf['Prev_Result'] = tdf.groupby(['TEAM', 'Season'])['Result'].shift()
+    #tdf['Prev_Result'] = tdf.groupby(['TEAM', 'Season'])['Result']
 
     # Step 3: Win/Loss Streak
     def calculate_streak(group):
-        streak = group['Prev_Result'].diff().ne(0).cumsum()
-        group['Streak'] = streak.groupby(streak).cumcount()
-        group['Streak'] *= group['Prev_Result'].map({1: 1, 0: -1})
+        streak = 0
+        streaks = []
+        for result in group['Result']:
+            if result == 1:
+                streak = streak + 1 if streak > 0 else 1
+            else:
+                streak = streak - 1 if streak < 0 else -1
+            streaks.append(streak)
+        group['Streak'] = streaks
         return group
 
     tdf = tdf.groupby(['TEAM', 'Season']).apply(calculate_streak)
@@ -294,7 +339,7 @@ def predict_today():
     tdf['Opponent'] = tdf.groupby('GAME-ID')['TEAM'].shift(-1).fillna(tdf.groupby('GAME-ID')['TEAM'].shift())
 
     # Clean up and remove the temporary 'Prev_Result' column
-    tdf.drop('Prev_Result', axis=1, inplace=True)
+    #tdf.drop('Prev_Result', axis=1, inplace=True)
 
     ref_map = {team: details[0] for team, details in TODAY_MAP.items()}
     moneyline_map = {team: details[1] for team, details in TODAY_MAP.items()}
@@ -329,11 +374,14 @@ def predict_today():
 
     temp = temp[temp['TEAM'].isin(t_teams)]
     temp.columns = data.train_cols_final
-
     X = temp.copy()
+    today_date = pd.to_datetime('today').normalize() 
+    X['TEAM_REST_DAYS'] = X.apply(lambda row: categorize_rest_days(row['TEAM'], today_date, tdf), axis=1)
+
+    num_type_cols = ['MONEYLINE', 'Last_ML_1', 'Last_ML_2', 'Last_ML_3', 'CLOSING_SPREAD', 'CLOSING_TOTAL']
     X['MONEYLINE'] = X['TEAM'].map(moneyline_map)
-    X[['MONEYLINE', 'Last_ML_1', 'Last_ML_2', 'Last_ML_3', 'CLOSING_SPREAD', 'CLOSING_TOTAL']] = X[['MONEYLINE', 'Last_ML_1', 'Last_ML_2', 'Last_ML_3', 'CLOSING_SPREAD', 'CLOSING_TOTAL']].replace('Even', '-100', regex=True)
-    X[['MONEYLINE', 'Last_ML_1', 'Last_ML_2', 'Last_ML_3', 'CLOSING_SPREAD', 'CLOSING_TOTAL']] = X[['MONEYLINE', 'Last_ML_1', 'Last_ML_2', 'Last_ML_3', 'CLOSING_SPREAD', 'CLOSING_TOTAL']].fillna(0).astype(float)
+    X[num_type_cols] = X[num_type_cols].replace('Even', '-100', regex=True)
+    X[num_type_cols] = X[num_type_cols].fillna(0).astype(float)
     X['MAIN REF'] = X['MAIN REF'].astype('category')
     X['CREW'] = X['CREW'].astype('category')
     X['TEAM'] = X['TEAM'].astype('category')
@@ -341,43 +389,53 @@ def predict_today():
     X['TEAM_REST_DAYS'] = X['TEAM_REST_DAYS'].astype('category')
     X['VENUE'] = (X['VENUE'] == 'H')*1
 
-    X2 = X.copy()
-
     try:
-        X2 = X2.drop(['OPENING_SPREAD'], axis=1)
+        X = X.drop(['OPENING_SPREAD'], axis=1)
     except:
         pass
 
+    return X
+
+def predict_today():
+
+    best_model = model
+    TODAY_MAP, t_teams = data.get_today_data()
+
+    X = prep_data(TODAY_MAP, t_teams)
+
     # make predictions
     probs = best_model.predict_proba(X)
-    total_probs = total_model.predict_proba(X2)
-    spread_probs = spread_model.predict_proba(X2)
-
-
-
+    spread_probs = spread_model.predict_proba(X)
+    total_probs = total_model.predict_proba(X)
+    
+    moneyline_map = {team: details[1] for team, details in TODAY_MAP.items()}
     team_probs_map = {team: prob for team, prob in zip(X['TEAM'].values, probs[:, 1])}
     team_spread_map = {team: prob for team, prob in zip(X['TEAM'].values, spread_probs[:, 1])}
     team_total_map = {team: prob for team, prob in zip(X['TEAM'].values, total_probs[:, 1])}
 
-    odds = X['MONEYLINE'].values
-    #booster = best_model.get_booster()
-    normed_odds = {team: team_probs_map[team]/(team_probs_map[team] + team_probs_map[opp]) for team, opp in zip(X['TEAM'], X['Opponent'])}
-    normed_spread_odds = {team: team_spread_map[team]/(team_spread_map[team] + team_spread_map[opp]) for team, opp in zip(X['TEAM'], X['Opponent'])}
+    normed_odds = {team: team_probs_map[team]/(team_probs_map[team] + team_probs_map[opp]) 
+                    for team, opp 
+                    in zip(X['TEAM'], X['Opponent'])}
 
-    normed_elos = {team: (int(X[X["TEAM"] == team]["Elo_Rating"]) - int(X["Elo_Rating"].min()))/(int(X["Elo_Rating"].max() - int(X["Elo_Rating"].min()))) for team in X['TEAM']}
-    normed_moms = {team: (int(X[X["TEAM"] == team]["Momentum"]) - int(X["Momentum"].min()))/(int(X["Momentum"].max() - int(X["Momentum"].min()))) for team in X['TEAM']}
+    normed_spread_odds = {team: team_spread_map[team]/(team_spread_map[team] + team_spread_map[opp]) 
+                    for team, opp 
+                    in zip(X['TEAM'], X['Opponent'])}
+
+    min_elo = int(X["Elo_Rating"].min())
+    max_elo = int(X["Elo_Rating"].max())
+    min_mom = int(X["Momentum"].min())
+    max_mom = int(X["Momentum"].max())
+
+    normed_elos = {team: (int(X[X["TEAM"] == team]["Elo_Rating"]) - min_elo)/(max_elo - min_elo) for team in X['TEAM']}
+    normed_moms = {team: (int(X[X["TEAM"] == team]["Momentum"]) - min_mom)/(max_mom - min_mom) for team in X['TEAM']}
     do_bet = {team: normed_odds[team] > normed_odds[opp] for team, opp in zip(X['TEAM'], X['Opponent'])}
 
-    #pred_contribs = booster.predict(DMatrix(X, enable_categorical=True), pred_contribs=True)
     pred_contribs = np.ones(shape=(len(X), len(X)))
 
     output_html = ''
     matchups = []
-    for team, prob, opp, contribs, elo, mom in zip(X['TEAM'].values, probs[:, 1], X['Opponent'].values, pred_contribs[:, :-1], X['Elo_Rating'].values, X['Momentum'].values):
+    for team, opp, elo, mom in zip(X['TEAM'].values,  X['Opponent'].values,  X['Elo_Rating'].values, X['Momentum'].values):
         home, away = {}, {}
-        # get the most important features
-        #helpers = np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[-3:]]
-        #detractions = (np.array(data.TRAIN_COLS)[np.argpartition(contribs, -3)[:3]])
 
         # get this team odds
         o = -100 if moneyline_map[team] == 'Even' else int(moneyline_map[team])
@@ -389,17 +447,17 @@ def predict_today():
 
         # get out odds
         our_line = probability_to_american_odds(normed_odds[team])
-        our_line = str(our_line) if our_line < 0 else f'+{our_line}'
+        our_line = str(max(-5000, our_line)) if our_line < 0 else f'+{min(5000, our_line)}'
 
         # get our opp odds
         our_opp_line = probability_to_american_odds(normed_odds[opp])
-        our_opp_line = str(our_opp_line) if our_opp_line < 0 else f'+{our_opp_line}'
+        our_opp_line = str(max(-5000, our_opp_line)) if our_opp_line < 0 else f'+{min(5000, our_opp_line)}'
 
         # get the bet sizing
         bet = kelly_criterion(100, normed_odds[team], o, temper=0.13)
 
         # tab character for spacing the prints
-        tab = '&nbsp;&nbsp;&nbsp;&nbsp;'
+
         win_color, lose_color = 'black', 'black'
         do_save = False
         # make picks
@@ -413,30 +471,7 @@ def predict_today():
             win_color = '#E4CD05'
             lose_color = 'orange'
             do_save = True
-            #b = f'Stright bet {round(bet, 2)}u to win {round(calculate_profit(o, round(bet, 2)),2)}u' if round(bet, 2) > 0 else 'Don\'t bet this straight - parlay only'
 
-            # home['team'] = team
-            # home['win_probability'] = round(normed_odds[team][0]*100, 2)
-            # home['bet'] = round(bet, 2)
-            # home['team_rating'] = int(elo)
-            # home['momentum'] = int(mom)
-            # home['best_features'] = helpers[:3]
-            # home['logo'] = team_logos[team]
-            # home['vegas'] = odd
-            # home['our_line'] = our_line
-            # home['color'] = 'yellow'
-
-            # away['team'] = opp
-            # away['win_probability'] = round(normed_odds[opp][0]*100, 2)
-            # away['bet'] = -1
-            # away['team_rating'] = int(X[X["TEAM"] == opp]["Elo_Rating"])
-            # away['momentum'] = int(X[X["TEAM"] == opp]["Momentum"])
-            # away['best_features'] = detractions[:3]
-            # away['logo'] = team_logos[opp]
-            # away['vegas'] = odd2
-            # away['our_line'] = our_opp_line
-            # away['color'] = 'orange'
-        
         home['team'] = team
         home['win_probability'] = round(normed_odds[team]*100, 2)
         home['bet'] = round(bet, 2) if bet > 0 else "No Bet"
@@ -448,14 +483,14 @@ def predict_today():
         home['our_line'] = our_line
         home['color'] = win_color
         home['head_ref'] = X[X["TEAM"] == team]["MAIN REF"].astype(str).values[0]
-        home['crew'] = X[X["TEAM"] == team]["CREW"]
+        home['crew'] = X[X["TEAM"] == team]["CREW"].astype(str).values[0]
         home['rest_days'] = X[X["TEAM"] == team]["TEAM_REST_DAYS"]
         home['venue'] = X[X["TEAM"] == team]["VENUE"]
         home['data'] = X[X["TEAM"] == team]
         home['normed_elo'] = normed_elos[team]*100
         home['normed_mom'] = normed_moms[team]*100
-        home['cover_spread'] = normed_spread_odds[team] > 0.5
-        home['cover_total'] = (team_total_map[team] > 0.5)
+        home['cover_spread'] = normed_spread_odds[team]*100
+        home['cover_total'] = team_total_map[team]*100
         home['cover_spread_color'] = 'rgba(0,255,0,0.5)' if normed_spread_odds[team] > 0.5 else 'rgba(255,0,0,0.5)'
         home['cover_total_color'] = 'rgba(0,255,0,0.5)' if (team_total_map[team] > 0.5) else 'rgba(255,0,0,0.5)'
         home['spread'] = X[X["TEAM"] == team]["CLOSING_SPREAD"].values[0]
@@ -472,23 +507,20 @@ def predict_today():
         away['our_line'] = our_opp_line
         away['color'] = lose_color
         away['head_ref'] = X[X["TEAM"] == opp]["MAIN REF"].astype(str).values[0]
-        away['crew'] = X[X["TEAM"] == opp]["CREW"]
+        away['crew'] = X[X["TEAM"] == opp]["CREW"].astype(str).values[0]
         away['rest_days'] = X[X["TEAM"] == opp]["TEAM_REST_DAYS"]
         away['venue'] = X[X["TEAM"] == opp]["VENUE"]
         away['data'] = X[X["TEAM"] == opp]
         away['normed_elo'] = normed_elos[opp]*100
         away['normed_mom'] = normed_moms[opp]*100
-        away['cover_spread'] = normed_spread_odds[opp] > 0.5
-        away['cover_total'] = (team_total_map[team] > 0.5)
+        away['cover_spread'] = normed_spread_odds[opp]*100
+        away['cover_total'] = team_total_map[team]*100
         away['spread'] = X[X["TEAM"] == opp]["CLOSING_SPREAD"].values[0]
         away['total'] = X[X["TEAM"] == opp]["CLOSING_TOTAL"].values[0]
         away['cover_spread_color'] = 'rgba(0,255,0,0.5)' if normed_spread_odds[opp] > 0.5 else 'rgba(255,0,0,0.5)'
         away['cover_total_color'] = 'rgba(0,255,0,0.5)' if (team_total_map[team] > 0.5) else 'rgba(255,0,0,0.5)'
 
-        if do_save:
+        if do_save and (('REF' not in away['head_ref']) and ('REF' not in home['head_ref'])):
             matchups.append([home, away])
-
-    with open('Output.html', 'w', encoding='utf-8') as f:
-        f.write(output_html)
 
     return {'matchups': matchups}  

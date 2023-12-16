@@ -287,7 +287,8 @@ class Dataset():
         refs_2021 = pd.read_csv(f'{self.historical_data_dir}2020-2021.csv')
         refs_2022 = pd.read_csv(f'{self.historical_data_dir}2021_2022.csv')
         refs_2023 = pd.read_csv(f'{self.historical_data_dir}2022-2023.csv')
-        self.refs_df = pd.concat([refs_2019, refs_2020, refs_2021, refs_2022, refs_2023])
+        refs_2024 = pd.read_csv(f'{self.historical_data_dir}2023-2024.csv')
+        self.refs_df = pd.concat([refs_2019, refs_2020, refs_2021, refs_2022, refs_2023, refs_2024])
         
         # get the columns right
         self.df.columns = self.cleaned_cols
@@ -298,7 +299,6 @@ class Dataset():
         missing_cols = set(self.cleaned_cols) - set(self.ydf.columns)
         for col in missing_cols:
             self.ydf[col] = pd.NA
-
 
         # concatenate the DataFrames
         self.df = pd.concat([self.df, self.ydf], ignore_index=True)
