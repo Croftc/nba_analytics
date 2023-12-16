@@ -380,7 +380,7 @@ def prep_data(TODAY_MAP, t_teams):
 
     num_type_cols = ['MONEYLINE', 'Last_ML_1', 'Last_ML_2', 'Last_ML_3', 'CLOSING_SPREAD', 'CLOSING_TOTAL']
     X['MONEYLINE'] = X['TEAM'].map(moneyline_map)
-    X[num_type_cols] = X[num_type_cols].replace('Even', '-100', regex=True)
+    X[num_type_cols] = X[num_type_cols].replace('Even', '-100', regex=True).replace('--', '-100', regex=True)
     X[num_type_cols] = X[num_type_cols].fillna(0).astype(float)
     X['MAIN REF'] = X['MAIN REF'].astype('category')
     X['CREW'] = X['CREW'].astype('category')
