@@ -4,3 +4,4 @@
 ensemble_old/*
 *.zip
 *.pem
+notebooks/column_mappings.json
