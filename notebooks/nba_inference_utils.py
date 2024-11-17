@@ -129,7 +129,7 @@ def get_rolling_stats(tdf, today_teams_list):
 
     tdf = tdf.sort_values('DATE')
 
-    return get_most_recent_rows(tdf, today_teams_list)
+    return tdf #get_most_recent_rows(tdf, today_teams_list)
 
 # Assign opponent features
 def assign_opp_stats(group):
@@ -301,7 +301,7 @@ def scrape_odds(today=None):
     driver.get(f'https://www.scoresandodds.com/nba?date={today}')
     
     # Wait for the page to load
-    time.sleep(3)
+    time.sleep(5)
     
     # Get the table data
     tables = driver.find_elements(By.CLASS_NAME, 'event-card-table')
@@ -309,37 +309,40 @@ def scrape_odds(today=None):
     # Process the tables
     current_odds = {}
     for table in tables:
-        rows = table.find_elements(By.CLASS_NAME, 'event-card-row')
-        all_moves = [float(''.join(c for c in m.text if (c.isdigit() or c == '.' or c == '-'))) for m in table.find_elements(By.CSS_SELECTOR, '[data-tab*="#line-movements"] .data-value')]
-        s_moves, t_moves = [], []
-        
-        for m in all_moves:
-            if abs(m) < 100:
-                s_moves.append(m)
-            else:
-                t_moves.append(m)
+        try:
+            rows = table.find_elements(By.CLASS_NAME, 'event-card-row')
+            all_moves = [float(''.join(c for c in m.text if (c.isdigit() or c == '.' or c == '-'))) for m in table.find_elements(By.CSS_SELECTOR, '[data-tab*="#line-movements"] .data-value')]
+            s_moves, t_moves = [], []
+            
+            for m in all_moves:
+                if abs(m) < 100:
+                    s_moves.append(m)
+                else:
+                    t_moves.append(m)
 
-        home_row = table.find_element(By.CSS_SELECTOR, '[data-side="home"]')
-        away_row = table.find_element(By.CSS_SELECTOR, '[data-side="away"]')
+            home_row = table.find_element(By.CSS_SELECTOR, '[data-side="home"]')
+            away_row = table.find_element(By.CSS_SELECTOR, '[data-side="away"]')
 
-        home_team = home_row.find_element(By.CSS_SELECTOR, '.team-name span').text
-        away_team = away_row.find_element(By.CSS_SELECTOR, '.team-name span').text
+            home_team = home_row.find_element(By.CSS_SELECTOR, '.team-name span').text
+            away_team = away_row.find_element(By.CSS_SELECTOR, '.team-name span').text
 
-        # Parsing home team details
-        h_ml = parse_moneyline(home_row)
-        h_spread = parse_spread(home_row)
-        h_total = parse_total(home_row)
-        home = ['REF', h_ml, 'H', team_map[away_team], h_spread, h_total, s_moves[-3:], t_moves[-3:], 'CREW', 'UMPIRE']
+            # Parsing home team details
+            h_ml = parse_moneyline(home_row)
+            h_spread = parse_spread(home_row)
+            h_total = parse_total(home_row)
+            home = ['REF', h_ml, 'H', team_map[away_team], h_spread, h_total, s_moves[-3:], t_moves[-3:], 'CREW', 'UMPIRE']
 
-        # Parsing away team details
-        a_ml = parse_moneyline(away_row)
-        a_spread = parse_spread(away_row)
-        a_total = parse_total(away_row)
-        away = ['REF', a_ml, 'R', team_map[home_team], a_spread, a_total, s_moves[-3:], t_moves[-3:], 'CREW', 'UMPIRE']
+            # Parsing away team details
+            a_ml = parse_moneyline(away_row)
+            a_spread = parse_spread(away_row)
+            a_total = parse_total(away_row)
+            away = ['REF', a_ml, 'R', team_map[home_team], a_spread, a_total, s_moves[-3:], t_moves[-3:], 'CREW', 'UMPIRE']
 
-        # Storing results
-        current_odds[team_map[home_team]] = home
-        current_odds[team_map[away_team]] = away
+            # Storing results
+            current_odds[team_map[home_team]] = home
+            current_odds[team_map[away_team]] = away
+        except Exception as e:
+            continue
     
     driver.quit()
     return current_odds
