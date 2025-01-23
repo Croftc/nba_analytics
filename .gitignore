@@ -6,3 +6,12 @@ ensemble_old/*
 *.pem
 notebooks/column_mappings.json
 notebooks/column_mappings.json
+archive/ensemble_total/*
+archive/ensemble_spread/*
+ensemble/*
+archive/ensemble/*
+nba_analytics/ensemble/*
+archive/ensemble_100/*
+archive/*
+notebooks/ppo_betting_tensorboard/*
+notebooks/wandb/*
