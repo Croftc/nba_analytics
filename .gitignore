@@ -15,3 +15,4 @@ archive/ensemble_100/*
 archive/*
 notebooks/ppo_betting_tensorboard/*
 notebooks/wandb/*
+live_data/*.xlsx
