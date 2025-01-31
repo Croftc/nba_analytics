@@ -41,7 +41,10 @@ def prepare_features(day_data, feature_cols):
     # )
     # Convert categorical columns
     for col in ['MAIN REF', 'TEAM', 'CREW', 'Opponent']:
-        X[col] = X[col].astype('category')
+        try:
+            X[col] = X[col].astype('category')
+        except:
+            pass
     #X['VENUE'] = (X['VENUE'] == 'H').astype(int)
     return X
 
@@ -75,6 +78,8 @@ def calculate_bets(X, model, y, odds_col, threshold=THRESHOLD):
                 
         # Update the probabilities mapping with the averaged probabilities
         ps = real_probabilities
+
+    
     predictions = probabilities > threshold
     
     # Calculate normalized odds and betting decisions
@@ -110,7 +115,7 @@ def process_daily_bets(day_data, model, bankroll, bet_size, y, feature_cols, odd
         already_bet.append(team)
         already_bet.append(opp)
         
-        if do_bet[team]:
+        if do_bet[team] and pred:
             if odds_col == 'Momentum':
                 odds = 300
             elif odds_col != 'MONEYLINE':
